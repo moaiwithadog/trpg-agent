@@ -9,7 +9,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # モデル設定
-GM_MODEL = "claude-haiku-4-5-20251001"  # GM役：Claude
+GM_MODEL = "claude-sonnet-4-20250514"  # GM役：Claude
 PL_MODEL = "gpt-4o-mini"               # PL役：ChatGPT
 
 # ゲーム設定
