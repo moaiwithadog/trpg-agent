@@ -45,8 +45,8 @@ class CampaignLogger:
             f.write("# Campaign Log\n\n")
             f.write("## キャンペーン情報\n\n")
             f.write(f"- 開始日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"- GMモデル: {config.GM_MODEL}\n")
-            f.write(f"- PLモデル: {config.PL_MODEL}\n\n")
+            f.write(f"- GM: {config.GM_PROVIDER} / {config.GM_MODEL}\n")
+            f.write(f"- PL: {config.PL_PROVIDER} / {config.PL_MODEL}\n")
             f.write("## シナリオテンプレート\n\n")
             f.write(f"{scenario_template}\n\n")
         

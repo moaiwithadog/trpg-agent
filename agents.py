@@ -99,55 +99,79 @@ GMから提示された「次回フック」を踏まえて、次のセッショ
 """
 
 
+def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_tokens: int = 1000) -> str:
+    """汎用LLM呼び出し関数"""
+    if provider == "anthropic":
+        response = claude_client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=messages
+        )
+        return response.content[0].text
+    
+    elif provider == "openai":
+        openai_messages = [{"role": "system", "content": system_prompt}]
+        openai_messages.extend(messages)
+        
+        response = openai_client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=openai_messages
+        )
+        return response.choices[0].message.content
+    
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+
 def call_gm(conversation_history: list) -> str:
     """GMを呼び出す"""
-    response = claude_client.messages.create(
+    return call_llm(
+        provider=config.GM_PROVIDER,
         model=config.GM_MODEL,
-        max_tokens=2000,
-        system=GM_SYSTEM_PROMPT,
-        messages=conversation_history
+        system_prompt=GM_SYSTEM_PROMPT,
+        messages=conversation_history,
+        max_tokens=2000
     )
-    return response.content[0].text
 
 
 def call_pl(conversation_history: list) -> str:
     """PLを呼び出す"""
-    messages = [{"role": "system", "content": PL_SYSTEM_PROMPT}]
-    messages.extend(conversation_history)
-    
-    response = openai_client.chat.completions.create(
+    return call_llm(
+        provider=config.PL_PROVIDER,
         model=config.PL_MODEL,
-        max_tokens=500,
-        messages=messages
+        system_prompt=PL_SYSTEM_PROMPT,
+        messages=conversation_history,
+        max_tokens=500
     )
-    return response.choices[0].message.content
 
 
 def call_pl_scenario_gen(scenario_template: str) -> str:
     """PLにシナリオ生成を依頼"""
     messages = [
-        {"role": "system", "content": PL_SCENARIO_GEN_PROMPT},
         {"role": "user", "content": f"以下のシナリオテンプレートに基づいて、PCと初回セッションを設定してください：\n\n{scenario_template}"}
     ]
     
-    response = openai_client.chat.completions.create(
+    return call_llm(
+        provider=config.PL_PROVIDER,
         model=config.PL_MODEL,
-        max_tokens=800,
-        messages=messages
+        system_prompt=PL_SCENARIO_GEN_PROMPT,
+        messages=messages,
+        max_tokens=800
     )
-    return response.choices[0].message.content
 
 
 def call_pl_next_hook(session_end_response: str) -> str:
     """PLに次回フック選択を依頼"""
     messages = [
-        {"role": "system", "content": PL_SYSTEM_PROMPT},
         {"role": "user", "content": f"GMからのセッション終了描写：\n\n{session_end_response}\n\n{PL_NEXT_HOOK_PROMPT}"}
     ]
     
-    response = openai_client.chat.completions.create(
+    return call_llm(
+        provider=config.PL_PROVIDER,
         model=config.PL_MODEL,
-        max_tokens=500,
-        messages=messages
+        system_prompt=PL_SYSTEM_PROMPT,
+        messages=messages,
+        max_tokens=500
     )
-    return response.choices[0].message.content
