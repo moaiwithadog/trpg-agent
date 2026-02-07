@@ -10,7 +10,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # === GM設定 ===
 GM_PROVIDER = "openai"  # "anthropic" or "openai"
-GM_MODEL = "gpt-4o"
+GM_MODEL = "gpt-5.2"
 
 # === PL設定 ===
 PL_PROVIDER = "anthropic"  # "anthropic" or "openai"
@@ -20,7 +20,7 @@ PL_MODEL = "claude-sonnet-4-20250514"
 MAX_TURNS = 50
 
 # === プリセット（参考用） ===
-# "anthropic" : "claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"
+# "anthropic" : "claude-opus-4-1-20250805","claude-sonnet-4-20250514", "claude-haiku-4-5-20251001",
 # "openai"    : "gpt-5.2", "gpt-5-mini", "gpt-4o", "gpt-4o-mini"
 # 
 # 

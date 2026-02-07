@@ -116,7 +116,7 @@ def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_
         
         response = openai_client.chat.completions.create(
             model=model,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
             messages=openai_messages
         )
         return response.choices[0].message.content
@@ -143,7 +143,7 @@ def call_pl(conversation_history: list) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SYSTEM_PROMPT,
         messages=conversation_history,
-        max_tokens=500
+        max_tokens=1000
     )
 
 
@@ -158,7 +158,7 @@ def call_pl_scenario_gen(scenario_template: str) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SCENARIO_GEN_PROMPT,
         messages=messages,
-        max_tokens=800
+        max_tokens=1000
     )
 
 
@@ -173,5 +173,5 @@ def call_pl_next_hook(session_end_response: str) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SYSTEM_PROMPT,
         messages=messages,
-        max_tokens=500
+        max_tokens=1000
     )
