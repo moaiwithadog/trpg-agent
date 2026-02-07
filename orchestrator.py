@@ -30,8 +30,8 @@ def check_pl_response(response: str) -> tuple[bool, str]:
     return True, "OK"
 
 
-class SessionLogger:
-    """セッションログをMarkdown形式で保存"""
+class CampaignLogger:
+    """キャンペーン全体のログをMarkdown形式で保存"""
     
     def __init__(self, scenario: str):
         # logsフォルダがなければ作成
@@ -39,23 +39,37 @@ class SessionLogger:
         
         # ファイル名を生成
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.filepath = f"logs/session_{timestamp}.md"
+        self.filepath = f"logs/campaign_{timestamp}.md"
+        self.session_count = 0
+        self.total_turns = 0
         
-        # ヘッダーを書き込み
         with open(self.filepath, "w", encoding="utf-8") as f:
-            f.write("# TRPG Session Log\n\n")
-            f.write("## セッション情報\n\n")
-            f.write(f"- 日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("# Campaign Log\n\n")
+            f.write("## キャンペーン情報\n\n")
+            f.write(f"- 開始日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"- GMモデル: {config.GM_MODEL}\n")
             f.write(f"- PLモデル: {config.PL_MODEL}\n\n")
-            f.write("## シナリオ\n\n")
+            f.write("## 初期シナリオ\n\n")
             f.write(f"{scenario}\n\n")
-            f.write("---\n\n")
         
         print(f"📄 ログファイル: {self.filepath}")
     
+    def start_session(self, session_num: int, additional_instruction: str = ""):
+        """セッション開始を記録"""
+        self.session_count = session_num
+        
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write("---\n\n")
+            f.write(f"# Session {session_num}\n\n")
+            f.write(f"- 開始時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            
+            if additional_instruction:
+                f.write("## 追加指示\n\n")
+                f.write(f"{additional_instruction}\n\n")
+    
     def log_turn_start(self, turn: int):
         """ターン開始を記録"""
+        self.total_turns += 1
         with open(self.filepath, "a", encoding="utf-8") as f:
             f.write(f"## Turn {turn}\n\n")
     
@@ -81,108 +95,162 @@ class SessionLogger:
     
     def log_human_input(self, input_text: str):
         """人間の介入を記録"""
-        if input_text and input_text.lower() != "q":
-            with open(self.filepath, "a", encoding="utf-8") as f:
-                f.write(f"### 【オーケストレーター介入】\n\n")
-                f.write(f"{input_text}\n\n")
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write(f"### 【オーケストレーター介入】\n\n")
+            f.write(f"{input_text}\n\n")
     
-    def log_session_end(self, reason: str, total_turns: int):
+    def log_session_end(self, reason: str, session_turns: int):
         """セッション終了を記録"""
         with open(self.filepath, "a", encoding="utf-8") as f:
-            f.write("---\n\n")
             f.write("## セッション終了\n\n")
             f.write(f"- 終了理由: {reason}\n")
-            f.write(f"- 総ターン数: {total_turns}\n")
+            f.write(f"- セッションターン数: {session_turns}\n")
+            f.write(f"- 終了時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+    
+    def log_campaign_end(self, reason: str):
+        """キャンペーン終了を記録"""
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write("---\n\n")
+            f.write("# Campaign End\n\n")
+            f.write(f"- 終了理由: {reason}\n")
+            f.write(f"- 総セッション数: {self.session_count}\n")
+            f.write(f"- 総ターン数: {self.total_turns}\n")
             f.write(f"- 終了時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
 def run_session(scenario_start: str):
-    """セッションを実行"""
+    """キャンペーンを実行（複数セッション対応）"""
+    
+    logger = CampaignLogger(scenario_start)
+    
+    session_num = 0
     gm_history = []
-    pl_history = []
-    
-    turn = 0
-    end_reason = "最大ターン到達"
-    
-    # ロガー初期化
-    logger = SessionLogger(scenario_start)
+    additional_instruction = ""
     
     print("=" * 50)
-    print("セッション開始")
+    print("キャンペーン開始")
     print("=" * 50)
     
-    # 最初のGM描写
+    # 最初のGMへの指示
     gm_history.append({"role": "user", "content": f"以下の設定でセッションを開始してください：\n{scenario_start}"})
-    gm_response = call_gm(gm_history)
-    gm_history.append({"role": "assistant", "content": gm_response})
     
-    print(f"\n【GM】\n{gm_response}")
-    logger.log_turn_start(0)
-    logger.log_gm(gm_response)
-    
-    while turn < config.MAX_TURNS:
-        turn += 1
+    while True:
+        session_num += 1
+        turn = 0
+        pl_history = []
+        
+        # セッション開始
+        logger.start_session(session_num, additional_instruction)
+        
         print(f"\n{'='*50}")
-        print(f"ターン {turn}")
+        print(f"セッション {session_num} 開始")
         print("=" * 50)
         
-        logger.log_turn_start(turn)
+        # 追加指示があれば履歴に追加
+        if additional_instruction:
+            gm_history.append({"role": "user", "content": f"【次セッションへの追加指示】\n{additional_instruction}"})
+            additional_instruction = ""
         
-        # PLに状況を伝える
-        pl_history.append({"role": "user", "content": f"GMからの描写：\n{gm_response}"})
-        
-        # PLの行動
-        pl_response = call_pl(pl_history)
-        pl_history.append({"role": "assistant", "content": pl_response})
-        
-        print(f"\n【PL】\n{pl_response}")
-        logger.log_pl(pl_response)
-        
-        # 異常検知
-        is_valid, reason = check_pl_response(pl_response)
-        if not is_valid:
-            print(f"\n⚠️ 異常検知: {reason}")
-            logger.log_anomaly("PL", reason)
-            
-            # 再試行
-            pl_history.append({"role": "user", "content": "あなたはPLです。GMの役割は行わず、【行動宣言】を含めて応答してください。"})
-            pl_response = call_pl(pl_history)
-            pl_history.append({"role": "assistant", "content": pl_response})
-            print(f"\n【PL 再試行】\n{pl_response}")
-            logger.log_pl(pl_response, is_retry=True)
-        
-        # 人間の介入ポイント
-        user_input = input("\n[Enter: 続行 / q: 終了 / 任意の文字: GMへの指示追加] > ")
-        if user_input.lower() == "q":
-            print("\nセッション終了（人間による中断）")
-            end_reason = "人間による中断"
-            break
-        
-        logger.log_human_input(user_input)
-        
-        # GMにPLの行動を伝える
-        gm_input = f"PLの行動：\n{pl_response}"
-        if user_input and user_input.lower() != "q":
-            gm_input += f"\n\n【オーケストレーターからの指示】{user_input}"
-        
-        gm_history.append({"role": "user", "content": gm_input})
-        
-        # GMの応答
+        # GMの最初の描写
         gm_response = call_gm(gm_history)
         gm_history.append({"role": "assistant", "content": gm_response})
         
         print(f"\n【GM】\n{gm_response}")
+        logger.log_turn_start(0)
         logger.log_gm(gm_response)
         
-        # セッション終了判定
-        if "【セッション終了】" in gm_response:
-            print("\nセッション終了（GM判断）")
-            end_reason = "GM判断"
+        # ターンループ
+        session_ended_by_gm = False
+        
+        while turn < config.MAX_TURNS:
+            turn += 1
+            print(f"\n{'='*50}")
+            print(f"セッション {session_num} - ターン {turn}")
+            print("=" * 50)
+            
+            logger.log_turn_start(turn)
+            
+            # PLに状況を伝える
+            pl_history.append({"role": "user", "content": f"GMからの描写：\n{gm_response}"})
+            
+            # PLの行動
+            pl_response = call_pl(pl_history)
+            pl_history.append({"role": "assistant", "content": pl_response})
+            
+            print(f"\n【PL】\n{pl_response}")
+            logger.log_pl(pl_response)
+            
+            # 異常検知
+            is_valid, reason = check_pl_response(pl_response)
+            if not is_valid:
+                print(f"\n⚠️ 異常検知: {reason}")
+                logger.log_anomaly("PL", reason)
+                
+                pl_history.append({"role": "user", "content": "あなたはPLです。GMの役割は行わず、【行動宣言】を含めて応答してください。"})
+                pl_response = call_pl(pl_history)
+                pl_history.append({"role": "assistant", "content": pl_response})
+                print(f"\n【PL 再試行】\n{pl_response}")
+                logger.log_pl(pl_response, is_retry=True)
+            
+            # 人間の介入ポイント（ターン終了後）
+            user_input = input("\n[Enter: 続行 / q: キャンペーン終了 / 任意の文字: GMへの指示追加] > ")
+            
+            if user_input.lower() == "q":
+                print("\nキャンペーン終了（人間による中断）")
+                logger.log_session_end("人間による中断", turn)
+                logger.log_campaign_end("人間による中断")
+                print(f"\nログ保存先: {logger.filepath}")
+                return
+            
+            # GMへの指示追加
+            gm_input = f"PLの行動：\n{pl_response}"
+            if user_input:
+                gm_input += f"\n\n【オーケストレーターからの指示】{user_input}"
+                logger.log_human_input(user_input)
+            
+            gm_history.append({"role": "user", "content": gm_input})
+            
+            # GMの応答
+            gm_response = call_gm(gm_history)
+            gm_history.append({"role": "assistant", "content": gm_response})
+            
+            print(f"\n【GM】\n{gm_response}")
+            logger.log_gm(gm_response)
+            
+            # セッション終了判定（GMが【セッション終了】を出力した場合）
+            if "【セッション終了】" in gm_response:
+                print("\nセッション終了（GM判断）")
+                logger.log_session_end("GM判断", turn)
+                session_ended_by_gm = True
+                break
+        
+        # 最大ターン到達の場合
+        if not session_ended_by_gm:
+            print("\nセッション終了（最大ターン到達）")
+            logger.log_session_end("最大ターン到達", turn)
+        
+        # セッション終了後の選択
+        print(f"\n{'='*50}")
+        print("セッション終了")
+        print("=" * 50)
+        
+        next_input = input("\n[Enter/y: 新セッション開始 / q: キャンペーン終了 / 任意の文字: 次セッションへの指示] > ")
+        
+        if next_input.lower() == "q":
+            print("\nキャンペーン終了")
+            logger.log_campaign_end("人間による終了")
             break
-    
-    logger.log_session_end(end_reason, turn)
+        elif next_input.lower() in ["", "y"]:
+            # 新セッション開始（追加指示なし）
+            gm_history.append({"role": "user", "content": "新しいセッションを開始してください。前回の続きから始めてください。"})
+        else:
+            # 追加指示付きで新セッション開始
+            additional_instruction = next_input
+            gm_history.append({"role": "user", "content": f"新しいセッションを開始してください。\n\n【追加指示】\n{next_input}"})
     
     print("\n" + "=" * 50)
-    print(f"セッション完了：全{turn}ターン")
+    print(f"キャンペーン完了")
+    print(f"総セッション数: {session_num}")
+    print(f"総ターン数: {logger.total_turns}")
     print(f"ログ保存先: {logger.filepath}")
     print("=" * 50)

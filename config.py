@@ -13,4 +13,4 @@ GM_MODEL = "claude-sonnet-4-20250514"  # GM役：Claude
 PL_MODEL = "gpt-4o-mini"               # PL役：ChatGPT
 
 # ゲーム設定
-MAX_TURNS = 20  # 最大ターン数（安全装置）
+MAX_TURNS = 40  # 最大ターン数（安全装置）
