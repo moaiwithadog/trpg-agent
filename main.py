@@ -1,16 +1,8 @@
 """TRPG Agent - メインエントリポイント"""
 from orchestrator import run_session
 
-# シナリオ設定（PC情報を含む）
-SCENARIO = """
-【PC情報】
-- 名前「ネイ」
-- 来歴「剣士の父と魔導士の母とを持つ初級冒険者の女性、基礎剣術と精神系の基礎魔法とを習得済み」
-- 性格「真面目で素直、常に丁寧語で話す」
-- 身体的特徴「黒髪ショート、黒い瞳、小柄で痩せ型、薄い胸」
-【目的】
-- 旧道近くの森に出没するという魔物の調査・識別
-"""
+# シナリオテンプレートのパス
+SCENARIO_TEMPLATE_PATH = "scenarios/template_fantasy.md"
 
 if __name__ == "__main__":
-    run_session(SCENARIO)
+    run_session(SCENARIO_TEMPLATE_PATH)

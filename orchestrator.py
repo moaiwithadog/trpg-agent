@@ -2,7 +2,7 @@
 import re
 import os
 from datetime import datetime
-from agents import call_gm, call_pl
+from agents import call_gm, call_pl, call_pl_scenario_gen, call_pl_next_hook, load_file
 import config
 
 
@@ -33,11 +33,9 @@ def check_pl_response(response: str) -> tuple[bool, str]:
 class CampaignLogger:
     """キャンペーン全体のログをMarkdown形式で保存"""
     
-    def __init__(self, scenario: str):
-        # logsフォルダがなければ作成
+    def __init__(self, scenario_template: str):
         os.makedirs("logs", exist_ok=True)
         
-        # ファイル名を生成
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.filepath = f"logs/campaign_{timestamp}.md"
         self.session_count = 0
@@ -49,10 +47,16 @@ class CampaignLogger:
             f.write(f"- 開始日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"- GMモデル: {config.GM_MODEL}\n")
             f.write(f"- PLモデル: {config.PL_MODEL}\n\n")
-            f.write("## 初期シナリオ\n\n")
-            f.write(f"{scenario}\n\n")
+            f.write("## シナリオテンプレート\n\n")
+            f.write(f"{scenario_template}\n\n")
         
         print(f"📄 ログファイル: {self.filepath}")
+    
+    def log_scenario_generation(self, pl_scenario: str):
+        """PLによるシナリオ生成を記録"""
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write("## PLによるシナリオ生成\n\n")
+            f.write(f"{pl_scenario}\n\n")
     
     def start_session(self, session_num: int, additional_instruction: str = ""):
         """セッション開始を記録"""
@@ -99,6 +103,12 @@ class CampaignLogger:
             f.write(f"### 【オーケストレーター介入】\n\n")
             f.write(f"{input_text}\n\n")
     
+    def log_pl_next_hook(self, response: str):
+        """PLの次回フック選択を記録"""
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write("### 【PL 次回への希望】\n\n")
+            f.write(f"{response}\n\n")
+    
     def log_session_end(self, reason: str, session_turns: int):
         """セッション終了を記録"""
         with open(self.filepath, "a", encoding="utf-8") as f:
@@ -118,21 +128,49 @@ class CampaignLogger:
             f.write(f"- 終了時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
-def run_session(scenario_start: str):
+def run_session(scenario_template_path: str):
     """キャンペーンを実行（複数セッション対応）"""
     
-    logger = CampaignLogger(scenario_start)
+    # シナリオテンプレート読み込み
+    scenario_template = load_file(scenario_template_path)
     
-    session_num = 0
-    gm_history = []
-    additional_instruction = ""
+    logger = CampaignLogger(scenario_template)
     
     print("=" * 50)
     print("キャンペーン開始")
     print("=" * 50)
     
+    # PLによるシナリオ生成
+    print("\n【PLによるシナリオ生成中...】\n")
+    pl_scenario = call_pl_scenario_gen(scenario_template)
+    print(f"【PL シナリオ生成】\n{pl_scenario}")
+    logger.log_scenario_generation(pl_scenario)
+    
+    # 人間の確認
+    confirm = input("\n[Enter: このシナリオで開始 / r: 再生成 / q: 終了] > ")
+    if confirm.lower() == "q":
+        print("\nキャンペーン終了")
+        logger.log_campaign_end("人間による中断（シナリオ生成後）")
+        return
+    elif confirm.lower() == "r":
+        print("\n【シナリオ再生成中...】\n")
+        pl_scenario = call_pl_scenario_gen(scenario_template)
+        print(f"【PL シナリオ生成】\n{pl_scenario}")
+        logger.log_scenario_generation(pl_scenario)
+    
+    session_num = 0
+    gm_history = []
+    
     # 最初のGMへの指示
-    gm_history.append({"role": "user", "content": f"以下の設定でセッションを開始してください：\n{scenario_start}"})
+    initial_prompt = f"""以下のシナリオテンプレートとPLが作成した設定でセッションを開始してください。
+
+【シナリオテンプレート】
+{scenario_template}
+
+【PLが作成した設定】
+{pl_scenario}
+"""
+    gm_history.append({"role": "user", "content": initial_prompt})
     
     while True:
         session_num += 1
@@ -140,16 +178,11 @@ def run_session(scenario_start: str):
         pl_history = []
         
         # セッション開始
-        logger.start_session(session_num, additional_instruction)
+        logger.start_session(session_num)
         
         print(f"\n{'='*50}")
         print(f"セッション {session_num} 開始")
         print("=" * 50)
-        
-        # 追加指示があれば履歴に追加
-        if additional_instruction:
-            gm_history.append({"role": "user", "content": f"【次セッションへの追加指示】\n{additional_instruction}"})
-            additional_instruction = ""
         
         # GMの最初の描写
         gm_response = call_gm(gm_history)
@@ -229,6 +262,12 @@ def run_session(scenario_start: str):
             print("\nセッション終了（最大ターン到達）")
             logger.log_session_end("最大ターン到達", turn)
         
+        # PLに次回フック選択を依頼
+        print("\n【PLによる次回フック選択中...】\n")
+        pl_next_hook = call_pl_next_hook(gm_response)
+        print(f"【PL 次回への希望】\n{pl_next_hook}")
+        logger.log_pl_next_hook(pl_next_hook)
+        
         # セッション終了後の選択
         print(f"\n{'='*50}")
         print("セッション終了")
@@ -241,12 +280,11 @@ def run_session(scenario_start: str):
             logger.log_campaign_end("人間による終了")
             break
         elif next_input.lower() in ["", "y"]:
-            # 新セッション開始（追加指示なし）
-            gm_history.append({"role": "user", "content": "新しいセッションを開始してください。前回の続きから始めてください。"})
+            # 新セッション開始（PLの希望を反映）
+            gm_history.append({"role": "user", "content": f"新しいセッションを開始してください。\n\n【PLの次回への希望】\n{pl_next_hook}"})
         else:
             # 追加指示付きで新セッション開始
-            additional_instruction = next_input
-            gm_history.append({"role": "user", "content": f"新しいセッションを開始してください。\n\n【追加指示】\n{next_input}"})
+            gm_history.append({"role": "user", "content": f"新しいセッションを開始してください。\n\n【PLの次回への希望】\n{pl_next_hook}\n\n【オーケストレーターからの追加指示】\n{next_input}"})
     
     print("\n" + "=" * 50)
     print(f"キャンペーン完了")
