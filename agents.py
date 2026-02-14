@@ -27,6 +27,10 @@ GM_SYSTEM_PROMPT = f"""あなたはテキストTRPGのゲームマスター（GM
 # 開始手順
 PC情報とシナリオ設定は最初のメッセージで与えられます。
 その情報を元に、スタートシーンを提示してTurn1を開始してください。
+
+# GMとしての心得
+- 「安全な選択肢」と「危険な選択肢」を並べる。
+- PLの失敗を許容する。たとえPCが失敗したり死亡したりしても、PLによるPCの選択を活かして、物語としての美しさを優先する。
 """
 
 # PLのシステムプロンプト
@@ -52,13 +56,18 @@ PL_SYSTEM_PROMPT = f"""あなたはテキストTRPGのプレイヤー（PL）で
 - 行動の結果がどうなるかはGMが決めます。あなたは宣言するだけです
 
 # 応答フォーマット（必須）
-以下の形式で応答してください：
+以下の形式で、400字～700字で応答してください：
 
 【思考】
 （PCの内心、状況の分析、迷いなど）
 
 【行動宣言】
 （具体的な行動を1つ明記。「〜する」「〜を試みる」の形で）
+
+# PLとしての心得
+- 失敗することを許容する。
+- 目標の達成よりも、PCの思考や感情をロールプレイして物語としての美しさを表すことを、より優先する。
+
 """
 
 # PL用：シナリオ生成プロンプト
@@ -132,7 +141,7 @@ def call_gm(conversation_history: list) -> str:
         model=config.GM_MODEL,
         system_prompt=GM_SYSTEM_PROMPT,
         messages=conversation_history,
-        max_tokens=2000
+        max_tokens=3000
     )
 
 
@@ -173,5 +182,5 @@ def call_pl_next_hook(session_end_response: str) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SYSTEM_PROMPT,
         messages=messages,
-        max_tokens=1000
+        max_tokens=2000
     )

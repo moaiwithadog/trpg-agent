@@ -8,6 +8,7 @@ TRPG Agent は以下の目的で開発されたシステムです：
 
 - **TRPGルールブックのテストプレイ自動化**: ルールの破綻や曖昧さを検出する
 - **LLMのTRPG能力の検証**: 異なるLLMのGM能力・PL能力を比較評価する
+- **物語の自動生成**: TRPGの枠組みを活用したLLMによる物語の自動生成
 
 ### 1.2 設計方針
 
@@ -347,7 +348,7 @@ pl_history = [
 `config.py` を編集：
 
 ```python
-# パターン1: Claude GM + ChatGPT PL（デフォルト）
+# パターン1: Claude GM + ChatGPT PL
 GM_PROVIDER = "anthropic"
 GM_MODEL = "claude-sonnet-4-20250514"
 PL_PROVIDER = "openai"
@@ -408,3 +409,4 @@ SCENARIO_TEMPLATE_PATH = "scenarios/your_template.md"
 | v6  | GM/PLプロバイダー切り替え機能 |
 | v61 | GPT5をオプションとして追加,関連する微調整 |
 | v7  | docs: README.mdとDESIGN.mdを追加 |
+| v71 | GM/PLの心得を追記,シナリオテンプレートファイルを追加,ほか微調整 |
