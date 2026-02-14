@@ -2,7 +2,7 @@
 import re
 import os
 from datetime import datetime
-from agents import call_gm, call_pl, call_pl_scenario_gen, call_pl_next_hook, load_file
+from agents import call_gm, call_pl, call_pl_scenario_gen, call_pl_next_hook, call_gm_session_feedback, call_pl_session_feedback, load_file
 import config
 
 
@@ -109,6 +109,18 @@ class CampaignLogger:
             f.write("### 【PL 次回への希望】\n\n")
             f.write(f"{response}\n\n")
     
+    def log_gm_feedback(self, response: str):
+        """GMのセッション振り返りを記録"""
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write("### 【GM セッション振り返り】\n\n")
+            f.write(f"{response}\n\n")
+
+    def log_pl_feedback(self, response: str):
+        """PLのセッション振り返りを記録"""
+        with open(self.filepath, "a", encoding="utf-8") as f:
+            f.write("### 【PL セッション振り返り】\n\n")
+            f.write(f"{response}\n\n")
+
     def log_session_end(self, reason: str, session_turns: int):
         """セッション終了を記録"""
         with open(self.filepath, "a", encoding="utf-8") as f:
@@ -126,6 +138,19 @@ class CampaignLogger:
             f.write(f"- 総セッション数: {self.session_count}\n")
             f.write(f"- 総ターン数: {self.total_turns}\n")
             f.write(f"- 終了時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+
+def _run_session_feedback(logger, gm_history, pl_history):
+    """キャンペーン終了時にGM/PLのフィードバックを生成・ログ"""
+    if not config.ENABLE_SESSION_FEEDBACK:
+        return
+    print("\n【セッション振り返り生成中...】\n")
+    gm_feedback = call_gm_session_feedback(gm_history)
+    print(f"【GM セッション振り返り】\n{gm_feedback}")
+    logger.log_gm_feedback(gm_feedback)
+    pl_feedback = call_pl_session_feedback(pl_history)
+    print(f"\n【PL セッション振り返り】\n{pl_feedback}")
+    logger.log_pl_feedback(pl_feedback)
 
 
 def run_session(scenario_template_path: str):
@@ -231,6 +256,7 @@ def run_session(scenario_template_path: str):
             if user_input.lower() == "q":
                 print("\nキャンペーン終了（人間による中断）")
                 logger.log_session_end("人間による中断", turn)
+                _run_session_feedback(logger, gm_history, pl_history)
                 logger.log_campaign_end("人間による中断")
                 print(f"\nログ保存先: {logger.filepath}")
                 return
@@ -277,6 +303,7 @@ def run_session(scenario_template_path: str):
         
         if next_input.lower() == "q":
             print("\nキャンペーン終了")
+            _run_session_feedback(logger, gm_history, pl_history)
             logger.log_campaign_end("人間による終了")
             break
         elif next_input.lower() in ["", "y"]:

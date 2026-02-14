@@ -18,6 +18,7 @@ PL_MODEL = "gpt-4o-mini"
 
 # ゲーム設定
 MAX_TURNS = 50  # 1セッションの最大ターン数(安全装置として)
+ENABLE_SESSION_FEEDBACK = True  # Trueでキャンペーン終了時にGM/PLの相互フィードバックを生成
 
 # === モデルの選択肢（参考） ===
 # "anthropic" : "claude-opus-4-1-20250805","claude-sonnet-4-20250514", "claude-haiku-4-5-20251001",

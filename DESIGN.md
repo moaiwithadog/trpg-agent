@@ -125,7 +125,8 @@ main.py
                                                     ▼
                               [継続?] ─→ YES → [次セッション]
                                   │
-                                  └─→ NO → [キャンペーン終了]
+                                  └─→ NO → [GM/PL振り返り*] → [キャンペーン終了]
+                                            (* ENABLE_SESSION_FEEDBACK=True時)
 ```
 
 ---
@@ -145,6 +146,7 @@ main.py
 | `PL_PROVIDER` | str | PLのLLMプロバイダー |
 | `PL_MODEL` | str | PLのモデル名 |
 | `MAX_TURNS` | int | 1セッションの最大ターン数 |
+| `ENABLE_SESSION_FEEDBACK` | bool | キャンペーン終了時のGM/PLフィードバック生成（デフォルト: False） |
 
 ### 4.2 agents.py
 
@@ -159,6 +161,8 @@ LLM呼び出しを抽象化するモジュール。
 | `call_pl()` | PL役LLMを呼び出す |
 | `call_pl_scenario_gen()` | PLにシナリオ生成を依頼 |
 | `call_pl_next_hook()` | PLに次回フック選択を依頼 |
+| `call_gm_session_feedback()` | GMにセッションの振り返りを依頼 |
+| `call_pl_session_feedback()` | PLにセッションの振り返りを依頼 |
 | `load_file()` | ファイル読み込みユーティリティ |
 
 **システムプロンプト：**
@@ -167,6 +171,8 @@ LLM呼び出しを抽象化するモジュール。
 - `PL_SYSTEM_PROMPT`: ルールブックを含むPL用プロンプト
 - `PL_SCENARIO_GEN_PROMPT`: シナリオ生成用プロンプト
 - `PL_NEXT_HOOK_PROMPT`: 次回フック選択用プロンプト
+- `GM_SESSION_FEEDBACK_PROMPT`: GMセッション振り返り用プロンプト
+- `PL_SESSION_FEEDBACK_PROMPT`: PLセッション振り返り用プロンプト
 
 ### 4.3 orchestrator.py
 
@@ -183,6 +189,7 @@ LLM呼び出しを抽象化するモジュール。
 | 関数名 | 説明 |
 |--------|------|
 | `check_pl_response()` | PL応答の異常検知 |
+| `_run_session_feedback()` | キャンペーン終了時のGM/PLフィードバック生成・ログ |
 | `run_session()` | キャンペーン全体の進行管理 |
 
 ### 4.4 main.py
@@ -208,7 +215,9 @@ LLM呼び出しを抽象化するモジュール。
    5.5. 【セッション終了】検出でループ脱出
 6. PLによる次回フック選択
 7. 人間による継続判断（Enter / q / 指示）
-8. 継続ならステップ4へ、終了ならキャンペーン終了
+8. 継続ならステップ4へ、終了ならステップ9へ
+9. GM/PLセッション振り返り（ENABLE_SESSION_FEEDBACK=True時のみ）
+10. キャンペーン終了
 ```
 
 ### 5.2 シナリオ生成
@@ -244,6 +253,7 @@ LLM呼び出しを抽象化するモジュール。
 - 各セッションの全ターン（GM/PL応答）
 - 異常検知・再試行
 - 人間の介入
+- GM/PLセッション振り返り（有効時）
 - セッション/キャンペーン終了情報
 
 ---
@@ -305,6 +315,12 @@ pl_history = [
 ## セッション終了
 - 終了理由: GM判断
 - セッションターン数: N
+
+### 【GM セッション振り返り】
+（ENABLE_SESSION_FEEDBACK=True かつキャンペーン終了時のみ）
+
+### 【PL セッション振り返り】
+（ENABLE_SESSION_FEEDBACK=True かつキャンペーン終了時のみ）
 
 ---
 
@@ -410,3 +426,4 @@ SCENARIO_TEMPLATE_PATH = "scenarios/your_template.md"
 | v61 | GPT5をオプションとして追加,関連する微調整 |
 | v7  | docs: README.mdとDESIGN.mdを追加 |
 | v71 | GM/PLの心得を追記,シナリオテンプレートファイルを追加,ほか微調整 |
+| v8  | キャンペーン終了時のGM/PLセッション振り返り機能を追加 |

@@ -107,6 +107,38 @@ GMから提示された「次回フック」を踏まえて、次のセッショ
 （次のセッションでやりたいこと、追いたい目標、気になる伏線など）
 """
 
+# GM用：セッション振り返りプロンプト
+GM_SESSION_FEEDBACK_PROMPT = """セッションが終了しました。今回のセッション全体を振り返り、PLの対応について評価してください。
+
+# 応答フォーマット（必須）
+
+【面白さの評価】
+（今回のセッション全体の面白さを5段階で評価し、その理由を1〜2文で述べてください）
+評価: ★☆☆☆☆〜★★★★★
+
+【PLの良かったところ】
+（PLの行動宣言やロールプレイで優れていた点を2〜3点挙げてください）
+
+【改善が望ましいところ】
+（PLの対応で改善できそうな点を1〜2点、建設的に述べてください）
+"""
+
+# PL用：セッション振り返りプロンプト
+PL_SESSION_FEEDBACK_PROMPT = """セッションが終了しました。今回のセッション全体を振り返り、GMの対応について評価してください。
+
+# 応答フォーマット（必須）
+
+【面白さの評価】
+（今回のセッション全体の面白さを5段階で評価し、その理由を1〜2文で述べてください）
+評価: ★☆☆☆☆〜★★★★★
+
+【GMの良かったところ】
+（GMの状況描写、裁定、NPC操作などで優れていた点を2〜3点挙げてください）
+
+【改善が望ましいところ】
+（GMの対応で改善できそうな点を1〜2点、建設的に述べてください）
+"""
+
 
 def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_tokens: int = 1000) -> str:
     """汎用LLM呼び出し関数"""
@@ -183,4 +215,32 @@ def call_pl_next_hook(session_end_response: str) -> str:
         system_prompt=PL_SYSTEM_PROMPT,
         messages=messages,
         max_tokens=2000
+    )
+
+
+def call_gm_session_feedback(conversation_history: list) -> str:
+    """GMにセッションの振り返りを依頼"""
+    messages = conversation_history + [
+        {"role": "user", "content": GM_SESSION_FEEDBACK_PROMPT}
+    ]
+    return call_llm(
+        provider=config.GM_PROVIDER,
+        model=config.GM_MODEL,
+        system_prompt=GM_SYSTEM_PROMPT,
+        messages=messages,
+        max_tokens=4000
+    )
+
+
+def call_pl_session_feedback(conversation_history: list) -> str:
+    """PLにセッションの振り返りを依頼"""
+    messages = conversation_history + [
+        {"role": "user", "content": PL_SESSION_FEEDBACK_PROMPT}
+    ]
+    return call_llm(
+        provider=config.PL_PROVIDER,
+        model=config.PL_MODEL,
+        system_prompt=PL_SYSTEM_PROMPT,
+        messages=messages,
+        max_tokens=4000
     )
