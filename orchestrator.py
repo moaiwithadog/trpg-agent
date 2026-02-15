@@ -68,7 +68,7 @@ class CampaignLogger:
             f.write(f"- 開始時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             
             if additional_instruction:
-                f.write("## 追加指示\n\n")
+                f.write("## 【オーケストレーター介入】追加指示\n\n")
                 f.write(f"{additional_instruction}\n\n")
     
     def log_turn_start(self, turn: int):
@@ -197,13 +197,16 @@ def run_session(scenario_template_path: str):
 """
     gm_history.append({"role": "user", "content": initial_prompt})
     
+    next_session_instruction = ""  # 次セッションへの指示を保持
+
     while True:
         session_num += 1
         turn = 0
         pl_history = []
         
         # セッション開始
-        logger.start_session(session_num)
+        logger.start_session(session_num, next_session_instruction)
+        next_session_instruction = ""  # 指示をリセット
         
         print(f"\n{'='*50}")
         print(f"セッション {session_num} 開始")
@@ -311,6 +314,7 @@ def run_session(scenario_template_path: str):
             gm_history.append({"role": "user", "content": f"新しいセッションを開始してください。\n\n【PLの次回への希望】\n{pl_next_hook}"})
         else:
             # 追加指示付きで新セッション開始
+            next_session_instruction = next_input  # ログ記録用に保存
             gm_history.append({"role": "user", "content": f"新しいセッションを開始してください。\n\n【PLの次回への希望】\n{pl_next_hook}\n\n【オーケストレーターからの追加指示】\n{next_input}"})
     
     print("\n" + "=" * 50)
