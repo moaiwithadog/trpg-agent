@@ -12,7 +12,7 @@ TRPG Agent は、複数のLLMを使用してTRPGのGM（ゲームマスター）
 
 ### 特徴
 
-- GM役とPL役に異なるLLM（Claude、ChatGPT等）を割り当て可能
+- GM役とPL役に異なるLLM（Claude、ChatGPT、Gemini等）を割り当て可能
 - コンテキストを共有しない独立したLLM間での対話
 - セッションログのMarkdown形式での自動保存
 - PLによるシナリオ生成・次回フック選択
@@ -28,6 +28,7 @@ TRPG Agent は、複数のLLMを使用してTRPGのGM（ゲームマスター）
 - **APIキー**:
   - Anthropic API（Claude使用時）
   - OpenAI API（ChatGPT使用時）
+  - Google AI SDK (Gemini使用時)
 
 ---
 
@@ -41,7 +42,7 @@ git clone https://github.com/moaiwithadog/trpg-agent.git
 cd trpg-agent
 
 # 必要なライブラリをインストール
-pip install anthropic openai python-dotenv
+pip install anthropic openai google-genai python-dotenv
 ```
 
 ### 2. APIキー設定
@@ -51,6 +52,7 @@ pip install anthropic openai python-dotenv
 ```
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+GOOGLE_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxx
 ```
 
 ### 3. 実行
@@ -99,11 +101,11 @@ trpg-agent/
 
 ```python
 # GM設定
-GM_PROVIDER = "anthropic"  # "anthropic" or "openai"
+GM_PROVIDER = "anthropic"  # "anthropic", "openai", or "google"
 GM_MODEL = "claude-sonnet-4-20250514"
 
 # PL設定
-PL_PROVIDER = "openai"  # "anthropic" or "openai"
+PL_PROVIDER = "openai"  # "anthropic", "openai", or "google"
 PL_MODEL = "gpt-4o-mini"
 
 # ゲーム設定

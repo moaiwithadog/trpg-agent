@@ -28,7 +28,7 @@ TRPG Agent は以下の目的で開発されたシステムです：
                   ▼                   ▼
 ┌─────────────────────────┐   ┌─────────────────────────┐
 │        GM役LLM          │   │        PL役LLM          │
-│  (Claude / ChatGPT)     │   │  (Claude / ChatGPT)     │
+│(Claude/ChatGPT/Gemini)  │   │(Claude/ChatGPT/Gemini)  │
 │                         │   │                         │
 │  - 状況描写             │   │  - 行動宣言             │
 │  - 判定・裁定           │   │  - PCのロールプレイ     │
@@ -141,7 +141,7 @@ main.py
 
 | 変数名 | 型 | 説明 |
 |--------|-----|------|
-| `GM_PROVIDER` | str | GMのLLMプロバイダー（"anthropic" / "openai"） |
+| `GM_PROVIDER` | str | GMのLLMプロバイダー（"anthropic" / "openai" / "google"） |
 | `GM_MODEL` | str | GMのモデル名 |
 | `PL_PROVIDER` | str | PLのLLMプロバイダー |
 | `PL_MODEL` | str | PLのモデル名 |
@@ -352,6 +352,11 @@ pl_history = [
 - システムプロンプト: `messages` の先頭に `role: system` で指定
 - 会話履歴: `messages` パラメータで指定
 
+**Google Generative AI API (Gemini):**
+- エンドポイント: `models.generate_content()`
+- システムプロンプト: `GenerationConfig` または `GenerativeModel` の `system_instruction` で指定
+- 会話履歴: `contents` パラメータで `Content` オブジェクトのリストとして指定
+
 ### 7.2 ファイル入出力
 
 | ファイル | 読み書き | 形式 |
@@ -377,10 +382,15 @@ PL_PROVIDER = "openai"
 PL_MODEL = "gpt-4o-mini"
 
 # パターン2: ChatGPT GM + Claude PL
-GM_PROVIDER = "openai"
 GM_MODEL = "gpt-4o"
 PL_PROVIDER = "anthropic"
 PL_MODEL = "claude-haiku-4-5-20251001"
+
+# パターン3: Gemini GM + Gemini PL
+GM_PROVIDER = "google"
+GM_MODEL = "gemini-2.5-flash"
+PL_PROVIDER = "google"
+PL_MODEL = "gemini-2.0-flash-lite"
 ```
 
 ### 8.2 シナリオテンプレート追加
@@ -434,3 +444,4 @@ SCENARIO_TEMPLATE_PATH = "scenarios/your_template.md"
 | v71 | GM/PLの心得を追記,シナリオテンプレートファイルを追加,ほか微調整 |
 | v8  | キャンペーン終了時のGM/PLセッション振り返り機能を追加 |
 | v8.1| セッション間の指示ログ記録機能の修正 |
+| v9  | Google Gemini API (google-genai) 対応 |

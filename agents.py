@@ -2,11 +2,16 @@
 import os
 from anthropic import Anthropic
 from openai import OpenAI
+from google import genai
+from google.genai import types
 import config
 
 # クライアント初期化
 claude_client = Anthropic()
 openai_client = OpenAI()
+google_client = None
+if config.GOOGLE_API_KEY:
+    google_client = genai.Client(api_key=config.GOOGLE_API_KEY)
 
 
 def load_file(filepath: str) -> str:
@@ -161,6 +166,26 @@ def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_
             messages=openai_messages
         )
         return response.choices[0].message.content
+    
+    elif provider == "google":
+        if not google_client:
+            raise ValueError("Google API Key is not set.")
+            
+        # Googleのメッセージ形式に変換
+        gemini_messages = []
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_messages.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+        
+        response = google_client.models.generate_content(
+            model=model,
+            contents=gemini_messages,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=max_tokens,
+            )
+        )
+        return response.text
     
     else:
         raise ValueError(f"Unknown provider: {provider}")
