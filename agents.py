@@ -83,7 +83,7 @@ PL_SCENARIO_GEN_PROMPT = f"""あなたはテキストTRPGのプレイヤー（PL
 {RULEBOOK}
 
 # 応答フォーマット（必須）
-以下の形式で応答してください：
+以下の形式で,700字以内で応答してください：
 
 【PC設定】
 - 名前:
@@ -209,7 +209,7 @@ def call_pl(conversation_history: list) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SYSTEM_PROMPT,
         messages=conversation_history,
-        max_tokens=1000
+        max_tokens=2000
     )
 
 
@@ -224,7 +224,7 @@ def call_pl_scenario_gen(scenario_template: str) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SCENARIO_GEN_PROMPT,
         messages=messages,
-        max_tokens=1000
+        max_tokens=2000
     )
 
 
@@ -239,7 +239,7 @@ def call_pl_next_hook(session_end_response: str) -> str:
         model=config.PL_MODEL,
         system_prompt=PL_SYSTEM_PROMPT,
         messages=messages,
-        max_tokens=2000
+        max_tokens=3000
     )
 
 
