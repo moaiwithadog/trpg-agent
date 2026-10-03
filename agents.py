@@ -1,17 +1,25 @@
 """GM/PLエージェント"""
-import os
-from anthropic import Anthropic
-from openai import OpenAI
-from google import genai
-from google.genai import types
 import config
+from cli_backend import call_cli_llm
 
-# クライアント初期化
-claude_client = Anthropic()
-openai_client = OpenAI()
-google_client = None
-if config.GOOGLE_API_KEY:
-    google_client = genai.Client(api_key=config.GOOGLE_API_KEY)
+# APIクライアントは使うときに初期化する（CLIだけで遊ぶ場合はAPIキーもSDKも不要）
+_clients = {}
+
+
+def _get_client(provider: str):
+    if provider not in _clients:
+        if provider == "anthropic":
+            from anthropic import Anthropic
+            _clients[provider] = Anthropic()
+        elif provider == "openai":
+            from openai import OpenAI
+            _clients[provider] = OpenAI()
+        elif provider == "google":
+            if not config.GOOGLE_API_KEY:
+                raise ValueError("Google API Key is not set.")
+            from google import genai
+            _clients[provider] = genai.Client(api_key=config.GOOGLE_API_KEY)
+    return _clients[provider]
 
 
 def load_file(filepath: str) -> str:
@@ -153,8 +161,12 @@ PL_SESSION_FEEDBACK_PROMPT = """セッションが終了しました。今回の
 
 def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_tokens: int = 1000) -> str:
     """汎用LLM呼び出し関数"""
+    if provider in ("claude_cli", "codex_cli"):
+        # CLIでは max_tokens を指定できないため、文字数はプロンプトの指示に任せる
+        return call_cli_llm(provider, model, system_prompt, messages)
+
     if provider == "anthropic":
-        response = claude_client.messages.create(
+        response = _get_client(provider).messages.create(
             model=model,
             max_tokens=max_tokens,
             system=system_prompt,
@@ -166,7 +178,7 @@ def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_
         openai_messages = [{"role": "system", "content": system_prompt}]
         openai_messages.extend(messages)
         
-        response = openai_client.chat.completions.create(
+        response = _get_client(provider).chat.completions.create(
             model=model,
             max_completion_tokens=max_tokens,
             messages=openai_messages
@@ -174,9 +186,9 @@ def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_
         return response.choices[0].message.content
     
     elif provider == "google":
-        if not google_client:
-            raise ValueError("Google API Key is not set.")
-            
+        from google.genai import types
+        google_client = _get_client(provider)
+
         # Googleのメッセージ形式に変換
         gemini_messages = []
         for msg in messages:
