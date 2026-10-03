@@ -150,6 +150,12 @@ main.py
 | `CLI_WORK_DIR` | str | サブスクCLIの作業ディレクトリ（デフォルト: ".cli_sessions"） |
 | `CLI_TIMEOUT_SEC` | int | サブスクCLI 1回の呼び出しのタイムアウト秒数 |
 
+**プロンプトキャッシュ（anthropic プロバイダー）：**
+
+APIはステートレスのため毎回履歴全体を送る。`"anthropic"` ではシステムプロンプトと最新メッセージに
+`cache_control: {"type": "ephemeral"}` を付け、前回までの共通部分をキャッシュから読み込ませて入力料金を抑える
+（キャッシュの有効期間は既定の5分。呼び出しのたびに延長される）。
+
 **サブスクCLIプロバイダー（cli_backend.py）：**
 
 `"claude_cli"` / `"codex_cli"` を指定すると、API SDK の代わりに `claude -p` / `codex exec` をサブプロセスで呼び出す。

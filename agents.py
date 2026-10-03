@@ -159,6 +159,25 @@ PL_SESSION_FEEDBACK_PROMPT = """セッションが終了しました。今回の
 """
 
 
+def _with_cache_breakpoint(messages: list) -> list:
+    """最後のメッセージに cache_control を付けたコピーを返す（Anthropic のプロンプトキャッシュ用）
+
+    システムプロンプトと、ここまでの履歴全体がキャッシュされ、
+    次の呼び出しではキャッシュ済みの先頭部分が割安な料金で読み込まれる。
+    呼び出し元の履歴リストは変更しない。
+    """
+    if not messages:
+        return messages
+    last = messages[-1]
+    content = last["content"]
+    if isinstance(content, str):
+        content = [{"type": "text", "text": content}]
+    else:
+        content = [dict(block) for block in content]
+    content[-1]["cache_control"] = {"type": "ephemeral"}
+    return messages[:-1] + [{"role": last["role"], "content": content}]
+
+
 def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_tokens: int = 1000) -> str:
     """汎用LLM呼び出し関数"""
     if provider in ("claude_cli", "codex_cli"):
@@ -169,8 +188,8 @@ def call_llm(provider: str, model: str, system_prompt: str, messages: list, max_
         response = _get_client(provider).messages.create(
             model=model,
             max_tokens=max_tokens,
-            system=system_prompt,
-            messages=messages
+            system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
+            messages=_with_cache_breakpoint(messages)
         )
         return response.content[0].text
     
