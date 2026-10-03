@@ -141,12 +141,21 @@ main.py
 
 | 変数名 | 型 | 説明 |
 |--------|-----|------|
-| `GM_PROVIDER` | str | GMのLLMプロバイダー（"anthropic" / "openai" / "google"） |
+| `GM_PROVIDER` | str | GMのLLMプロバイダー（"anthropic" / "openai" / "google" / "claude_cli" / "codex_cli"） |
 | `GM_MODEL` | str | GMのモデル名 |
 | `PL_PROVIDER` | str | PLのLLMプロバイダー |
 | `PL_MODEL` | str | PLのモデル名 |
 | `MAX_TURNS` | int | 1セッションの最大ターン数 |
 | `ENABLE_SESSION_FEEDBACK` | bool | キャンペーン終了時のGM/PLフィードバック生成（デフォルト: False） |
+| `CLI_WORK_DIR` | str | サブスクCLIの作業ディレクトリ（デフォルト: ".cli_sessions"） |
+| `CLI_TIMEOUT_SEC` | int | サブスクCLI 1回の呼び出しのタイムアウト秒数 |
+
+**サブスクCLIプロバイダー（cli_backend.py）：**
+
+`"claude_cli"` / `"codex_cli"` を指定すると、API SDK の代わりに `claude -p` / `codex exec` をサブプロセスで呼び出す。
+オーケストレーターからは従来どおり履歴全体が渡されるが、`cli_backend` が送信済み履歴を記録しておき、
+今回の履歴がその続きであれば増えた user メッセージだけを resume で送る（続きでなければ新規CLIセッションを開始し、履歴をまとめて渡す）。
+ダイス要求以降を破棄された直前のGM応答は一致とみなし、次の送信に「打ち切られた」旨の注記を添える。
 
 ### 4.2 agents.py
 

@@ -61,6 +61,23 @@ GOOGLE_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxx
 python main.py
 ```
 
+### （代替）サブスク契約のCLIで遊ぶ
+
+APIキーの代わりに、Claude Code / Codex CLI のサブスク契約（定額枠）でGM/PLを動かせます。
+
+1. 使うCLIをインストールし、サブスクのアカウントでログインしておく
+   - Claude Code: `claude` を起動してログイン（Pro/Max プラン）
+   - Codex CLI: `codex login`（ChatGPT プラン）
+2. `pip install python-dotenv`（APIのSDKは、APIプロバイダーを使わないなら不要）
+3. `config.py` で `GM_PROVIDER` / `PL_PROVIDER` に `"claude_cli"` または `"codex_cli"` を指定
+
+仕組み：
+- 各CLIを非対話モード（`claude -p` / `codex exec`）で呼び出し、2回目以降は `--resume` / `codex exec resume` でセッションを継続して差分だけを送ります。
+- CLI既定のコーディング用システムプロンプトはGM/PL用プロンプトに置き換え（`--system-prompt-file` / `model_instructions_file`）、Claude Code はツールを無効化（`--tools ""`）、Codex は読み取り専用サンドボックスで動かします。
+- セッション記録とシステムプロンプトは `.cli_sessions/` に置かれます。
+- **APIキーが環境変数にあるとCLIがAPI課金で動いてしまうため**、子プロセスには `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `CODEX_API_KEY` を渡しません。
+- 定額枠でも、各プランの利用上限（時間あたり・週あたり）は消費します。
+
 ---
 
 ## 概念と用語
@@ -84,6 +101,7 @@ trpg-agent/
 ├── .gitignore
 ├── config.py            # GM/PL設定
 ├── agents.py            # LLM呼び出し
+├── cli_backend.py       # サブスクCLI（Claude Code / Codex）呼び出し
 ├── orchestrator.py      # ゲーム進行管理
 ├── main.py              # エントリポイント
 ├── rulebook.md          # TRPGルールブック
@@ -101,11 +119,11 @@ trpg-agent/
 
 ```python
 # GM設定
-GM_PROVIDER = "anthropic"  # "anthropic", "openai", or "google"
+GM_PROVIDER = "anthropic"  # "anthropic", "openai", "google", "claude_cli", or "codex_cli"
 GM_MODEL = "claude-sonnet-4-20250514"
 
 # PL設定
-PL_PROVIDER = "openai"  # "anthropic", "openai", or "google"
+PL_PROVIDER = "openai"  # "anthropic", "openai", "google", "claude_cli", or "codex_cli"
 PL_MODEL = "gpt-4o-mini"
 
 # ゲーム設定
