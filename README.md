@@ -249,3 +249,6 @@ SOFTWARE.
 - 公開用初版 2026/02/08
   - もあいぬ (企画 兼 テスター)
   - Anthropic Claude Opus 4.5 (それ以外のことは、ほとんどこの子がやってくれた)
+- 改版 2026/10/04
+  - もあいぬ (企画)
+  - Anthropic Claude Opus 5.5 
