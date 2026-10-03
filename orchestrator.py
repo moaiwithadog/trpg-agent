@@ -1,6 +1,7 @@
 """オーケストレーター：ゲーム進行を管理"""
 import re
 import os
+import random
 from datetime import datetime
 from agents import call_gm, call_pl, call_pl_scenario_gen, call_pl_next_hook, call_gm_session_feedback, call_pl_session_feedback, load_file
 import config
@@ -19,6 +20,7 @@ def check_pl_response(response: str) -> tuple[bool, str]:
         r"【状況】",
         r"【判定】",
         r"【裁定】",
+        r"【ダイス",
         r"行動候補",
         r"あなたはどうしますか",
         r"選択してください",
@@ -28,6 +30,44 @@ def check_pl_response(response: str) -> tuple[bool, str]:
             return False, f"GM的な振る舞いを検出: {pattern}"
     
     return True, "OK"
+
+
+# GMのダイス要求マーカー（例: 【ダイス要求: 通常】 / 【ダイス要求：対抗】）
+DICE_REQUEST_PATTERN = re.compile(r"【ダイス要求\s*[:：]\s*(通常|対抗)\s*】")
+MAX_DICE_ROLLS_PER_TURN = 3  # 1回のGM応答で許容するダイス要求の上限（無限ループ防止）
+
+
+def roll_dice(kind: str) -> str:
+    """ダイスを振り、GMに返す【ダイス結果】文字列を作る"""
+    if kind == "対抗":
+        pc, npc = random.randint(1, 6), random.randint(1, 6)
+        return f"【ダイス結果】対抗ロール: PCの出目 {pc} / NPCの出目 {npc}（差 {pc - npc:+d}）"
+    return f"【ダイス結果】通常ロール: 1D6 = {random.randint(1, 6)}"
+
+
+def call_gm_with_dice(gm_history: list) -> str:
+    """GMを呼び出し、ダイス要求があればオーケストレーターが振って続きを書かせる。
+
+    gm_history には各段階のGM応答とダイス結果を追記する。
+    戻り値は、PLに渡す/表示/ログするために各段階とダイス結果を結合したGM応答全体。
+    """
+    parts = []
+    for _ in range(MAX_DICE_ROLLS_PER_TURN + 1):
+        response = call_gm(gm_history)
+        match = DICE_REQUEST_PATTERN.search(response)
+        if not match or len(parts) // 2 >= MAX_DICE_ROLLS_PER_TURN:
+            gm_history.append({"role": "assistant", "content": response})
+            parts.append(response)
+            break
+        # ダイス要求より後ろ（GMが勝手に書いた出目や結果）は破棄する
+        response = response[:match.end()]
+        gm_history.append({"role": "assistant", "content": response})
+        parts.append(response)
+        result = roll_dice(match.group(1))
+        print(f"\n🎲 {result}")
+        parts.append(result)
+        gm_history.append({"role": "user", "content": f"{result}\n裁定ログ後半から続けてください。"})
+    return "\n\n".join(parts)
 
 
 class CampaignLogger:
@@ -213,8 +253,7 @@ def run_session(scenario_template_path: str):
         print("=" * 50)
         
         # GMの最初の描写
-        gm_response = call_gm(gm_history)
-        gm_history.append({"role": "assistant", "content": gm_response})
+        gm_response = call_gm_with_dice(gm_history)
         
         print(f"\n【GM】\n{gm_response}")
         logger.log_turn_start(0)
@@ -273,8 +312,7 @@ def run_session(scenario_template_path: str):
             gm_history.append({"role": "user", "content": gm_input})
             
             # GMの応答
-            gm_response = call_gm(gm_history)
-            gm_history.append({"role": "assistant", "content": gm_response})
+            gm_response = call_gm_with_dice(gm_history)
             
             print(f"\n【GM】\n{gm_response}")
             logger.log_gm(gm_response)
